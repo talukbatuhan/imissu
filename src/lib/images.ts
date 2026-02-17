@@ -46,5 +46,5 @@ export const getAllImages = unstable_cache(
         );
     },
     ["all-images-list"],
-    { revalidate: 3600 } // 1 hour
+    { revalidate: 60, tags: ["images"] } // 1 minute cache, with tag for manual revalidation
 );

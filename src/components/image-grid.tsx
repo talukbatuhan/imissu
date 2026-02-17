@@ -79,7 +79,7 @@ export function ImageGrid({
     };
 
     return (
-        <main className="container mx-auto p-4 min-h-screen pb-32 flex flex-col relative">
+        <main className="container mx-auto p-4 min-h-screen pb-32 flex flex-col relative light-bg-pattern dark:light-bg-pattern">
             <header className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-0 bg-background/95 backdrop-blur z-20 py-4 border-b">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Gallery</h1>

@@ -124,3 +124,15 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Premium Dot Pattern for Light Mode */
+.light-bg-pattern {
+  background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Premium Dot Pattern for Dark Mode */
+.dark .light-bg-pattern {
+  background-image: radial-gradient(#ffffff0a 1px, transparent 1px);
+  background-size: 20px 20px;
+}

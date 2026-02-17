@@ -25,9 +25,17 @@ export function SearchInput() {
         replace(`${pathname}?${params.toString()}`);
     }, 300);
 
-    // Sync input with URL if URL changes externally (e.g. clear filters)
+    // We can rely on key prop to force re-render if needed, but controlled input is fine.
+    // Syncing input with URL is tricky without causing loops.
+    // Let's just update based on pathname change if we want clear functionality to work from outside.
+    // Actually, let's just use `key` on the Input component for simplicity if we need reset.
+    // Or better, only update state if query string actually changes.
     useEffect(() => {
-        setInputValue(searchParams.get("q")?.toString() || "");
+        const query = searchParams.get("q")?.toString() || "";
+        if (query !== inputValue) {
+            setInputValue(query);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams]);
 
     const handleChange = (term: string) => {

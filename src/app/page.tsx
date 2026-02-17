@@ -15,7 +15,8 @@ export default async function Home({
   searchParams: Promise<{ image?: string; q?: string; page?: string }>;
 }) {
   const { image: selectedImage, q, page } = await searchParams;
-  const query = q?.toLowerCase();
+  const rawQuery = q ? decodeURIComponent(q) : "";
+  const query = rawQuery.trim().toLowerCase();
   const currentPage = Number(page) || 1;
 
   // 1. Fetch ALL images (cached)
