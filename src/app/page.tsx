@@ -71,12 +71,22 @@ export default async function Home({
   // 5. Selected Image Logic
   let initialNote = "";
   let selectedImageUrl = "";
+  let nextImage: string | undefined;
+  let prevImage: string | undefined;
+
   if (selectedImage) {
     // Allow selecting image even if not in current page, but must be in full list
     if (allImages.includes(selectedImage)) {
       const foundNote = allNotesData.find(n => n.imageKey === selectedImage);
       initialNote = foundNote?.content || "";
       selectedImageUrl = getImageUrl(selectedImage);
+
+      // Find index in FILTERED list to allow navigation within search results
+      const currentIndex = filteredImages.indexOf(selectedImage);
+      if (currentIndex !== -1) {
+        if (currentIndex > 0) prevImage = filteredImages[currentIndex - 1];
+        if (currentIndex < filteredImages.length - 1) nextImage = filteredImages[currentIndex + 1];
+      }
     }
   }
 
@@ -98,6 +108,10 @@ export default async function Home({
           imageKey={selectedImage}
           initialNote={initialNote}
           imageUrl={selectedImageUrl}
+          nextImage={nextImage}
+          prevImage={prevImage}
+          query={query}
+          page={currentPage}
         />
       )}
     </>

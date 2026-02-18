@@ -90,11 +90,11 @@ export function ImageGrid({
 
                 <div className="flex items-center gap-3">
                     <Button
-                        variant={isSelectionMode ? "secondary" : "outline"}
+                        variant={isSelectionMode ? "default" : "outline"}
                         onClick={toggleSelectionMode}
-                        className="transition-all"
+                        className={isSelectionMode ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}
                     >
-                        {isSelectionMode ? "Cancel Selection" : "Select Images"}
+                        {isSelectionMode ? "Done Selecting" : "Select Images"}
                     </Button>
                     <SearchInput />
                 </div>
@@ -117,8 +117,8 @@ export function ImageGrid({
                                 page={currentPage}
                             />
 
-                            {/* Selection Overlay */}
-                            {(isSelectionMode || isSelected) && (
+                            {/* Selection Overlay - Visible only in Selection Mode */}
+                            {isSelectionMode && (
                                 <div
                                     className="absolute inset-0 z-20 cursor-pointer"
                                     onClick={(e) => {
@@ -127,7 +127,7 @@ export function ImageGrid({
                                         toggleSelection(img);
                                     }}
                                 >
-                                    <div className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white shadow-sm flex items-center justify-center transition-all ${isSelected ? "bg-primary border-primary" : "bg-black/30 hover:bg-black/50"}`}>
+                                    <div className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white shadow-sm flex items-center justify-center transition-all ${isSelected ? "bg-primary border-primary scale-110" : "bg-black/30 hover:bg-black/50"}`}>
                                         {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
                                     </div>
                                     <div className={`absolute inset-0 border-2 rounded-lg pointer-events-none transition-all ${isSelected ? "border-primary bg-primary/10" : "border-transparent"}`} />

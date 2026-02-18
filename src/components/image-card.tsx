@@ -17,20 +17,11 @@ export function ImageCard({ src, img, hasNote, isSelected, query, page }: ImageC
     const router = useRouter();
 
     const handleClick = (e: MouseEvent) => {
-        // Prevent default navigation
+        // Prevent default navigation if needed, but we used router.push
         e.preventDefault();
 
-        // Use single click for now as it's more standard for web, 
-        // but if strictly "Double Click" is needed, we can debounce clicks.
-        // For better UX, single click to select (highlight), double click to open is nice.
-
-        // Current implementation: Single click opens because it's web. 
-        // Emulating OS behavior (1 click select, 2 click open) usually confuses web users.
-        // However, user specifically asked for "Double click".
-
-        if (e.detail === 2) {
-            router.push(`/?image=${img}${query ? `&q=${query}` : ''}&page=${page}`, { scroll: false });
-        }
+        // Single click to open
+        router.push(`/?image=${img}${query ? `&q=${query}` : ''}&page=${page}`, { scroll: false });
     };
 
     return (
@@ -52,12 +43,7 @@ export function ImageCard({ src, img, hasNote, isSelected, query, page }: ImageC
                     unoptimized
                 />
 
-                {/* Hover Overlay */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <span className="text-white font-medium px-4 py-2 border border-white/30 rounded-full backdrop-blur-sm transform scale-90 group-hover:scale-100 transition-transform select-none pointer-events-none">
-                        Double Click
-                    </span>
-                </div>
+                {/* Hover Overlay - REMOVED for Single Click simplicity */}
             </div>
 
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 pt-8 translate-y-2 group-hover:translate-y-0 transition-transform pointer-events-none">

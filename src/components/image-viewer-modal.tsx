@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -15,11 +15,22 @@ interface ImageViewerModalProps {
     imageKey: string;
     initialNote: string;
     imageUrl: string;
+    nextImage?: string;
+    prevImage?: string;
+    query?: string;
+    page?: number;
     onClose?: () => void;
-    // Navigation props would be great here but require passing the whole list or using URL params smartly
 }
 
-export function ImageViewerModal({ imageKey, initialNote, imageUrl }: ImageViewerModalProps) {
+export function ImageViewerModal({
+    imageKey,
+    initialNote,
+    imageUrl,
+    nextImage,
+    prevImage,
+    query,
+    page
+}: ImageViewerModalProps) {
     const router = useRouter();
     const [content, setContent] = useState(initialNote);
     const [isSaving, setIsSaving] = useState(false);
@@ -51,17 +62,34 @@ export function ImageViewerModal({ imageKey, initialNote, imageUrl }: ImageViewe
         return () => clearTimeout(timer);
     }, [content, imageKey, initialNote]);
 
-    const handleClose = () => {
-        // Optimistic clean URL push
+    const handleClose = useCallback(() => {
+        // Find which page we should be on? For now just go back to page/search context
         router.back();
-    };
+    }, [router]);
 
+    const navigateTo = useCallback((img: string) => {
+        // Construct clean URL
+        const params = new URLSearchParams();
+        params.set("image", img);
+        if (query) params.set("q", query);
+        if (page) params.set("page", page.toString());
+        router.replace(`/?${params.toString()}`);
+    }, [router, query, page]);
 
-    // Keyboard shortcuts
+    // Keyboard shortcuts & Navigation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape") {
-                router.back();
+                handleClose();
+            }
+            // Check if focus is NOT in textarea
+            if (document.activeElement?.tagName !== 'TEXTAREA') {
+                if (e.key === "ArrowRight" && nextImage && !e.ctrlKey && !e.metaKey) {
+                    navigateTo(nextImage);
+                }
+                if (e.key === "ArrowLeft" && prevImage && !e.ctrlKey && !e.metaKey) {
+                    navigateTo(prevImage);
+                }
             }
             if ((e.ctrlKey || e.metaKey) && e.key === "s") {
                 e.preventDefault();
@@ -81,7 +109,7 @@ export function ImageViewerModal({ imageKey, initialNote, imageUrl }: ImageViewe
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [content, imageKey, router]);
+    }, [content, imageKey, nextImage, prevImage, handleClose, navigateTo]); // Dependencies for closure
 
     return (
         <Dialog defaultOpen={true} onOpenChange={(open) => !open && handleClose()}>
@@ -90,9 +118,10 @@ export function ImageViewerModal({ imageKey, initialNote, imageUrl }: ImageViewe
                 {/* Left/Top: Image Area */}
                 <div className="relative flex-1 bg-black/5 dark:bg-black/40 flex items-center justify-center p-6 group overflow-hidden">
                     <motion.div
+                        key={imageKey} // Reset animation on image change
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.3 }}
+                        transition={{ duration: 0.2 }}
                         className="relative w-full h-full"
                     >
                         <Image
@@ -105,6 +134,25 @@ export function ImageViewerModal({ imageKey, initialNote, imageUrl }: ImageViewe
                             unoptimized
                         />
                     </motion.div>
+
+                    {/* Navigation Arrows (Visual) */}
+                    {prevImage && (
+                        <div
+                            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-background/20 hover:bg-background/40 backdrop-blur cursor-pointer text-foreground/50 hover:text-foreground transition-all z-20 md:opacity-0 md:group-hover:opacity-100"
+                            onClick={() => navigateTo(prevImage)}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                        </div>
+                    )}
+                    {nextImage && (
+                        <div
+                            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-background/20 hover:bg-background/40 backdrop-blur cursor-pointer text-foreground/50 hover:text-foreground transition-all z-20 md:opacity-0 md:group-hover:opacity-100"
+                            onClick={() => navigateTo(nextImage)}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                        </div>
+                    )}
+
 
                     {/* Overlay Controls */}
                     <div className="absolute top-4 left-4 z-10 flex gap-2">
@@ -249,6 +297,15 @@ export function ImageViewerModal({ imageKey, initialNote, imageUrl }: ImageViewe
                                 to close
                             </span>
                         </div>
+                        {/* Visual Next/Prev hints could go here too */}
+                        {nextImage && (
+                            <span className="flex items-center gap-1.5">
+                                <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+                                    →
+                                </kbd>
+                                next
+                            </span>
+                        )}
                     </div>
                 </div>
             </DialogContent>
