@@ -68,11 +68,44 @@ export const assets = pgTable("assets", {
     height: integer("height"),
     notes: text("notes"), // User notes for this specific asset
     uploadedAt: timestamp("created_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"), // Soft delete
 });
 
-export const assetsRelations = relations(assets, ({ one }) => ({
+export const assetDocuments = pgTable("asset_documents", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    assetId: uuid("asset_id").references(() => assets.id, { onDelete: 'cascade' }),
+    fileName: varchar("file_name", { length: 255 }).notNull(),
+    fileUrl: text("file_url").notNull(),
+    fileSize: integer("file_size"),
+    uploadedAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const assetNoteHistory = pgTable("asset_note_history", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    assetId: uuid("asset_id").references(() => assets.id, { onDelete: 'cascade' }),
+    note: text("note").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const assetsRelations = relations(assets, ({ one, many }) => ({
     product: one(products, {
         fields: [assets.productId],
         references: [products.id],
+    }),
+    documents: many(assetDocuments),
+    noteHistory: many(assetNoteHistory),
+}));
+
+export const assetNoteHistoryRelations = relations(assetNoteHistory, ({ one }) => ({
+    asset: one(assets, {
+        fields: [assetNoteHistory.assetId],
+        references: [assets.id],
+    }),
+}));
+
+export const assetDocumentsRelations = relations(assetDocuments, ({ one }) => ({
+    asset: one(assets, {
+        fields: [assetDocuments.assetId],
+        references: [assets.id],
     }),
 }));

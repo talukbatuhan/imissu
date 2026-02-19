@@ -1,23 +1,28 @@
 
 import { db } from "@/lib/db";
 import { products, assets, categories } from "@/lib/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, isNull, and } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { AssetUploader } from "@/components/assets/asset-uploader";
+import { AssetGrid } from "@/components/assets/asset-grid";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import Image from "next/image";
-import { FileText, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { DeleteAssetButton } from "@/components/assets/delete-asset-button";
 import { DeleteProductButton } from "@/components/products/delete-product-button";
-
+import { AssetUploader } from "@/components/assets/asset-uploader";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import { UploadCloud } from "lucide-react";
 
 interface ProductPageProps {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ page?: string; query?: string }>;
 }
 
 async function getProduct(id: string) {
@@ -39,11 +44,18 @@ async function getProductAssets(productId: string) {
     return await db
         .select()
         .from(assets)
-        .where(eq(assets.productId, productId))
+        .where(and(
+            eq(assets.productId, productId),
+            isNull(assets.deletedAt)
+        ))
         .orderBy(desc(assets.uploadedAt));
 }
 
-export default async function ProductDetailPage({ params }: ProductPageProps) {
+async function getAllProducts() {
+    return await db.select({ id: products.id, name: products.name }).from(products).orderBy(desc(products.createdAt));
+}
+
+export default async function ProductDetailPage({ params, searchParams }: ProductPageProps) {
     const { id } = await params;
     const productData = await getProduct(id);
 
@@ -52,164 +64,81 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
     }
 
     const { product, categoryName } = productData;
-    const productAssets = await getProductAssets(id);
+    const rawAssets = await getProductAssets(id);
+    const allProducts = await getAllProducts(); // For reassignment in AssetGrid
 
-    const images = productAssets.filter((a) => a.fileType === "image");
-    const documents = productAssets.filter((a) => a.fileType === "document");
+    // Transform assets to include the product object (required by AssetGrid)
+    const assetList = rawAssets.map(a => ({
+        ...a,
+        product: product
+    }));
 
     return (
-        <div className="flex flex-col space-y-6">
+        <div className="flex flex-col space-y-6 h-full">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                    <h2 className="text-2xl font-bold tracking-tight">{product.name}</h2>
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-2xl font-bold tracking-tight">{product.name}</h2>
+                        <Badge variant="outline" className="text-xs font-normal">
+                            {assetList.length} Dosya
+                        </Badge>
+                    </div>
+
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Badge variant="outline">{product.sku}</Badge>
+                        <span>{categoryName || "Genel"}</span>
                         <span>•</span>
-                        <span>{categoryName || "Kategorisiz"}</span>
-                        <span>•</span>
-                        <Badge variant={product.status === "published" ? "default" : "secondary"}>
+                        <Badge variant={product.status === "published" ? "secondary" : "secondary"} className="h-5">
                             {product.status === "published" ? "Yayında" : "Taslak"}
                         </Badge>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <DeleteProductButton productId={product.id} productName={product.name} />
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button>
+                                <UploadCloud className="mr-2 h-4 w-4" /> Dosya Yükle
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Dosya Yükle</DialogTitle>
+                                <DialogDescription>
+                                    Bu klasöre yeni dosyalar ekleyin.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <AssetUploader productId={product.id} />
+                        </DialogContent>
+                    </Dialog>
+
                     <Link href={`/dashboard/products/${product.id}/edit`}>
-                        <Button variant="outline">Ürünü Düzenle</Button>
+                        <Button variant="outline">Düzenle</Button>
                     </Link>
+                    <DeleteProductButton productId={product.id} productName={product.name} />
                 </div>
             </div>
 
             <Separator />
 
-            <Tabs defaultValue="overview" className="space-y-4">
-                <TabsList>
-                    <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
-                    <TabsTrigger value="assets">Dosyalar ({productAssets.length})</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="overview" className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-sm font-medium">Açıklama</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                    {product.description || "Açıklama girilmemiş."}
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-sm font-medium">Boyutlar</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm">{product.dimensions || "Belirtilmemiş"}</p>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="col-span-full md:col-span-2 lg:col-span-3">
-                            <CardHeader>
-                                <CardTitle className="text-sm font-medium">Özellikler</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {product.specifications && Array.isArray(product.specifications) && product.specifications.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {(product.specifications as { key: string, value: string }[]).map((spec, idx) => (
-                                            <div key={idx} className="flex justify-between border-b pb-2 last:border-0 last:pb-0">
-                                                <span className="font-medium text-sm">{spec.key}</span>
-                                                <span className="text-sm text-muted-foreground">{spec.value}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">Özellik tanımlanmamış.</p>
-                                )}
-                            </CardContent>
-                        </Card>
+            {/* Assets Grid - reusing the Media Library component */}
+            <div className="flex-1">
+                {assetList.length > 0 ? (
+                    <AssetGrid
+                        initialData={assetList}
+                        currentPage={1} // TODO: Implement pagination if list gets huge
+                        totalPages={1}
+                        products={allProducts}
+                    />
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-64 text-center border-2 border-dashed rounded-lg bg-muted/10">
+                        <UploadCloud className="h-10 w-10 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-medium">Bu klasör henüz boş</h3>
+                        <p className="text-muted-foreground text-sm max-w-sm mt-2 mb-4">
+                            Mevcut görselleri bu klasöre taşıyın veya yeni dosyalar yükleyin.
+                        </p>
                     </div>
-                </TabsContent>
-
-                <TabsContent value="assets" className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Dosya Yükle</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground mb-4">
-                                Bu ürüne dosya eklemek için resim veya PDF dosyalarını sürükleyip bırakın.
-                            </p>
-                            <AssetUploader productId={product.id} />
-                        </CardContent>
-                    </Card>
-
-                    <div className="grid gap-6 md:grid-cols-2">
-                        {/* Images Gallery */}
-                        <div className="space-y-4">
-                            <h3 className="font-semibold text-lg">Resimler ({images.length})</h3>
-                            {images.length === 0 ? (
-                                <div className="text-sm text-muted-foreground italic">Resim yüklenmemiş.</div>
-                            ) : (
-                                <div className="grid grid-cols-2 gap-4">
-                                    {images.map((img) => (
-                                        <div key={img.id} className="group relative aspect-square rounded-md border overflow-hidden bg-muted">
-                                            <Image
-                                                src={img.fileUrl}
-                                                alt={img.fileName}
-                                                fill
-                                                className="object-cover transition-transform group-hover:scale-105"
-                                            />
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                <DeleteAssetButton assetId={img.id} fileName={img.fileName} />
-                                                <Link href={img.fileUrl} target="_blank">
-                                                    <Button size="icon" variant="secondary" className="h-8 w-8">
-                                                        <ExternalLink className="h-4 w-4" />
-                                                    </Button>
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Documents List */}
-                        <div className="space-y-4">
-                            <h3 className="font-semibold text-lg">Belgeler ({documents.length})</h3>
-                            {documents.length === 0 ? (
-                                <div className="text-sm text-muted-foreground italic">Belge yüklenmemiş.</div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {documents.map((doc) => (
-                                        <div key={doc.id} className="flex items-center justify-between p-3 rounded-md border bg-card hover:bg-accent/50 transition-colors">
-                                            <div className="flex items-center gap-3 overflow-hidden">
-                                                <div className="flex items-center justify-center w-10 h-10 rounded bg-primary/10 text-primary shrink-0">
-                                                    <FileText className="h-5 w-5" />
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-medium truncate">{doc.fileName}</p>
-                                                    <p className="text-xs text-muted-foreground">PDF Document</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Link href={doc.fileUrl} target="_blank">
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8">
-                                                        <ExternalLink className="h-4 w-4" />
-                                                    </Button>
-                                                </Link>
-                                                <DeleteAssetButton assetId={doc.id} fileName={doc.fileName} variant="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </TabsContent>
-            </Tabs>
+                )}
+            </div>
         </div>
     );
 }

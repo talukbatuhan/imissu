@@ -3,10 +3,11 @@
 
 import { useState, useEffect } from "react";
 import { AssetWithProduct, bulkDeleteAssets, bulkAssignAssets, deleteAsset } from "@/app/actions/assets";
+import { createFolder } from "@/app/actions/folder-actions";
 import { cn } from "@/lib/utils";
 import { AssetDetailModal } from "./asset-detail-modal";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
-import { CheckCircle2, Copy, Eye, Trash, MousePointer2, X, FolderInput, Loader2 } from "lucide-react";
+import { CheckCircle2, Copy, Eye, Trash, MousePointer2, X, FolderInput, Loader2, FolderPlus } from "lucide-react";
 import { toast } from "sonner";
 import { assignAssetToProduct } from "@/app/actions/unassigned-assets";
 import { useRouter } from "next/navigation";
@@ -46,6 +47,9 @@ export function AssetGrid({ initialData, currentPage, totalPages, products }: As
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkAssigning, setIsBulkAssigning] = useState(false);
     const [showBulkAssignDialog, setShowBulkAssignDialog] = useState(false);
+    const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
+    const [folderName, setFolderName] = useState("");
+    const [isCreatingFolder, setIsCreatingFolder] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -168,6 +172,26 @@ export function AssetGrid({ initialData, currentPage, totalPages, products }: As
         toast.success("Link kopyalandı!");
     };
 
+    const handleCreateFolder = async () => {
+        if (!folderName.trim()) return;
+        setIsCreatingFolder(true);
+        try {
+            const result = await createFolder(folderName);
+            if (result.success) {
+                toast.success("Klasör oluşturuldu");
+                setShowCreateFolderDialog(false);
+                setFolderName("");
+                router.refresh();
+            } else {
+                toast.error("Klasör oluşturulamadı");
+            }
+        } catch (error) {
+            toast.error("Bir hata oluştu");
+        } finally {
+            setIsCreatingFolder(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Toolbar */}
@@ -202,6 +226,14 @@ export function AssetGrid({ initialData, currentPage, totalPages, products }: As
                             </Button>
                         </div>
                     )}
+
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowCreateFolderDialog(true)}
+                        className=""
+                    >
+                        <FolderPlus className="mr-2 h-4 w-4" /> Klasör Oluştur
+                    </Button>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -386,6 +418,37 @@ export function AssetGrid({ initialData, currentPage, totalPages, products }: As
                                 </CommandGroup>
                             </CommandList>
                         </Command>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Create Folder Dialog */}
+            <Dialog open={showCreateFolderDialog} onOpenChange={setShowCreateFolderDialog}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Klasör Oluştur</DialogTitle>
+                        <DialogDescription>
+                            Yeni bir klasör (ürün) oluşturun.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Klasör Adı</label>
+                            <input
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                value={folderName}
+                                onChange={(e) => setFolderName(e.target.value)}
+                                placeholder="Örn: Yaz Sezonu Çekimleri"
+                            />
+                        </div>
+                        <Button
+                            className="w-full"
+                            onClick={handleCreateFolder}
+                            disabled={!folderName.trim() || isCreatingFolder}
+                        >
+                            {isCreatingFolder ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                            Oluştur
+                        </Button>
                     </div>
                 </DialogContent>
             </Dialog>

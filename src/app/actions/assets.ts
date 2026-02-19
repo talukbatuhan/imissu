@@ -2,9 +2,9 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { assets } from "@/lib/schema";
+import { assets, products, assetDocuments, assetNoteHistory } from "@/lib/schema";
 import { revalidatePath } from "next/cache";
-import { eq, desc, count, inArray, ilike } from "drizzle-orm";
+import { eq, desc, count, inArray, ilike, isNull, isNotNull, and } from "drizzle-orm";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export type AssetWithProduct = typeof assets.$inferSelect & {
@@ -18,13 +18,19 @@ export async function getAssets(page = 1, pageSize = 24, query = "") {
     const [totalResult] = await db
         .select({ value: count() })
         .from(assets)
-        .where(query ? ilike(assets.fileName, `%${query}%`) : undefined);
+        .where(and(
+            isNull(assets.deletedAt),
+            query ? ilike(assets.fileName, `%${query}%`) : undefined
+        ));
 
     const totalCount = totalResult.value;
 
     // 2. Get paginated assets with product relation
     const allAssets = await db.query.assets.findMany({
-        where: query ? ilike(assets.fileName, `%${query}%`) : undefined,
+        where: and(
+            isNull(assets.deletedAt),
+            query ? ilike(assets.fileName, `%${query}%`) : undefined
+        ),
         limit: pageSize,
         offset: offset,
         orderBy: desc(assets.uploadedAt),
@@ -73,11 +79,60 @@ export async function createAssetRecord(data: {
     }
 }
 
+export async function getAssetNoteHistory(assetId: string) {
+    const history = await db.query.assetNoteHistory.findMany({
+        where: eq(assetNoteHistory.assetId, assetId),
+        orderBy: desc(assetNoteHistory.createdAt)
+    });
+    return history;
+}
+
 export async function updateAssetNote(assetId: string, notes: string) {
     try {
+        // 1. Save to History
+        if (notes) {
+            await db.insert(assetNoteHistory).values({
+                assetId,
+                note: notes
+            });
+        }
+
+        // 2. Update DB
         await db.update(assets)
             .set({ notes })
             .where(eq(assets.id, assetId));
+
+        // 3. Backup to Supabase Storage (Text File)
+        // Find asset to get path
+        const asset = await db.query.assets.findFirst({
+            where: eq(assets.id, assetId)
+        });
+
+        if (asset && asset.storagePath) {
+            // Create a .txt file path adjacent to the image
+            // e.g. products/123/image.png -> products/123/image.png.txt or just image_notes.txt
+            // Let's use: [original_name].txt
+
+            // Extract folder from storagePath
+            const pathParts = asset.storagePath.split('/');
+            const fileName = pathParts.pop();
+            const folderPath = pathParts.join('/');
+            const noteFileName = `${fileName}.notes.txt`;
+            const noteFilePath = folderPath ? `${folderPath}/${noteFileName}` : noteFileName;
+
+            // Upload text content
+            const { error } = await supabaseAdmin.storage
+                .from("products") // Assuming 'products' bucket
+                .upload(noteFilePath, notes, {
+                    contentType: 'text/plain; charset=utf-8',
+                    upsert: true
+                });
+
+            if (error) {
+                console.error("Failed to backup note to storage:", error);
+                // Don't fail the whole request, just log it
+            }
+        }
 
         revalidatePath("/dashboard/assets");
         return { success: true };
@@ -89,32 +144,11 @@ export async function updateAssetNote(assetId: string, notes: string) {
 
 export async function deleteAsset(assetId: string) {
     try {
-        // 1. Get the asset to check storage path
-        const asset = await db.query.assets.findFirst({
-            where: eq(assets.id, assetId),
-        });
+        await db.update(assets)
+            .set({ deletedAt: new Date() })
+            .where(eq(assets.id, assetId));
 
-        if (!asset) {
-            return { success: false, error: "Asset not found" };
-        }
-
-        // 2. If it's a new asset (in 'products' bucket), delete from storage
-        // Legacy assets (in 'images' bucket) are preserved to become 'unassigned' again
-        if (asset.storagePath.startsWith("products/")) {
-            const { error: storageError } = await supabaseAdmin.storage
-                .from("products")
-                .remove([asset.storagePath]);
-
-            if (storageError) {
-                console.warn("Failed to delete file from storage:", storageError);
-                // Continue to delete record anyway
-            }
-        }
-
-        // 3. Delete from DB
-        await db.delete(assets).where(eq(assets.id, assetId));
-
-        revalidatePath(`/dashboard/products/${asset.productId}`);
+        revalidatePath("/dashboard/assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to delete asset:", error);
@@ -126,28 +160,9 @@ export async function bulkDeleteAssets(assetIds: string[]) {
     try {
         if (!assetIds.length) return { success: true };
 
-        // 1. Get assets to find storage paths
-        const assetsToDelete = await db.query.assets.findMany({
-            where: inArray(assets.id, assetIds),
-        });
-
-        // 2. Delete from storage (only if in products bucket)
-        const storagePaths = assetsToDelete
-            .filter(a => a.storagePath.startsWith("products/"))
-            .map(a => a.storagePath);
-
-        if (storagePaths.length > 0) {
-            const { error: storageError } = await supabaseAdmin.storage
-                .from("products")
-                .remove(storagePaths);
-
-            if (storageError) {
-                console.warn("Failed to delete files from storage:", storageError);
-            }
-        }
-
-        // 3. Delete from DB
-        await db.delete(assets).where(inArray(assets.id, assetIds));
+        await db.update(assets)
+            .set({ deletedAt: new Date() })
+            .where(inArray(assets.id, assetIds));
 
         revalidatePath("/dashboard/assets");
         return { success: true };
@@ -170,5 +185,102 @@ export async function bulkAssignAssets(assetIds: string[], productId: string) {
     } catch (error) {
         console.error("Failed to bulk assign assets:", error);
         return { success: false, error: "Failed to bulk assign assets" };
+    }
+}
+
+// Recycle Bin Actions
+
+export async function getDeletedAssets() {
+    const deletedAssets = await db.query.assets.findMany({
+        where: isNotNull(assets.deletedAt),
+        orderBy: desc(assets.deletedAt),
+        with: {
+            product: true
+        }
+    });
+    return deletedAssets as AssetWithProduct[];
+}
+
+export async function restoreAsset(assetIds: string[]) {
+    try {
+        if (!assetIds.length) return { success: true };
+        await db.update(assets)
+            .set({ deletedAt: null })
+            .where(inArray(assets.id, assetIds));
+
+        revalidatePath("/dashboard/trash");
+        revalidatePath("/dashboard/assets");
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to restore assets:", error);
+        return { success: false, error: "Başarısız" };
+    }
+}
+
+export async function permanentDeleteAsset(assetIds: string[]) {
+    try {
+        if (!assetIds.length) return { success: true };
+
+        // Get assets to find storage paths before deleting
+        const assetsToDelete = await db.query.assets.findMany({
+            where: inArray(assets.id, assetIds),
+        });
+
+        const storagePaths = assetsToDelete
+            .filter(a => a.storagePath.startsWith("products/"))
+            .map(a => a.storagePath);
+
+        if (storagePaths.length > 0) {
+            await supabaseAdmin.storage.from("products").remove(storagePaths);
+        }
+
+        // Also delete associated documents files? (Ideally yes, but let's stick to base logic)
+
+        await db.delete(assets).where(inArray(assets.id, assetIds));
+
+        revalidatePath("/dashboard/trash");
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to permanently delete assets:", error);
+        return { success: false, error: "Başarısız" };
+    }
+}
+
+// Document Actions
+
+export async function addAssetDocument(data: {
+    assetId: string;
+    fileName: string;
+    fileUrl: string;
+    fileSize?: number;
+}) {
+    try {
+        await db.insert(assetDocuments).values({
+            assetId: data.assetId,
+            fileName: data.fileName,
+            fileUrl: data.fileUrl,
+            fileSize: data.fileSize,
+        });
+        revalidatePath("/dashboard/assets");
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to add document:", error);
+        return { success: false };
+    }
+}
+
+export async function getAssetDocuments(assetId: string) {
+    return await db.query.assetDocuments.findMany({
+        where: eq(assetDocuments.assetId, assetId),
+        orderBy: desc(assetDocuments.uploadedAt),
+    });
+}
+
+export async function deleteAssetDocument(documentId: string) {
+    try {
+        await db.delete(assetDocuments).where(eq(assetDocuments.id, documentId));
+        return { success: true };
+    } catch (error) {
+        return { success: false };
     }
 }
