@@ -6,8 +6,8 @@ import { Toaster } from "@/components/ui/sonner";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Image Note App",
-  description: "View images and add notes",
+  title: "Resim Not Uygulaması",
+  description: "Resimlere not ekleyin ve görüntüleyin",
 };
 
 export default function RootLayout({

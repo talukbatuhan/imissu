@@ -55,7 +55,7 @@ export function ImageCard({ src, img, hasNote, isSelected, query, page }: ImageC
                     </div>
                     {hasNote && (
                         <div className="bg-yellow-400/90 text-black px-1.5 py-0.5 rounded text-[10px] font-bold shadow-sm animate-pulse">
-                            NOTE
+                            NOT
                         </div>
                     )}
                 </div>

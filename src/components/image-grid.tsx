@@ -50,21 +50,21 @@ export function ImageGrid({
     };
 
     const handleBulkDelete = async () => {
-        if (!confirm(`Are you sure you want to delete ${selectedItems.size} images? This cannot be undone.`)) return;
+        if (!confirm(`${selectedItems.size} resmi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
 
         setIsDeleting(true);
         try {
             const keys = Array.from(selectedItems);
             const res = await deleteImages(keys);
             if (res.success) {
-                toast.success(`${keys.length} images deleted`);
+                toast.success(`${keys.length} resim silindi`);
                 setSelectedItems(new Set());
                 setIsSelectionMode(false);
             } else {
-                toast.error("Failed to delete images");
+                toast.error("Resimler silinemedi");
             }
         } catch {
-            toast.error("Failed to delete images");
+            toast.error("Resimler silinemedi");
         } finally {
             setIsDeleting(false);
         }
@@ -73,7 +73,7 @@ export function ImageGrid({
     const handleBulkCopy = () => {
         const links = Array.from(selectedItems).map(key => getImageUrl(key)).join("\n");
         navigator.clipboard.writeText(links);
-        toast.success(`${selectedItems.size} links copied to clipboard`);
+        toast.success(`${selectedItems.size} bağlantı panoya kopyalandı`);
         setSelectedItems(new Set());
         setIsSelectionMode(false);
     };
@@ -82,9 +82,9 @@ export function ImageGrid({
         <main className="container mx-auto p-4 min-h-screen pb-32 flex flex-col relative light-bg-pattern dark:light-bg-pattern">
             <header className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-0 bg-background/95 backdrop-blur z-20 py-4 border-b">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Gallery</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">Galeri</h1>
                     <div className="text-sm text-muted-foreground">
-                        {totalItems} items • {notedImages.size} notes
+                        {totalItems} öğe • {notedImages.size} not
                     </div>
                 </div>
 
@@ -94,9 +94,9 @@ export function ImageGrid({
                         onClick={toggleSelectionMode}
                         className={isSelectionMode ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}
                     >
-                        {isSelectionMode ? "Done Selecting" : "Select Images"}
+                        {isSelectionMode ? "Seçimi Tamamla" : "Resim Seç"}
                     </Button>
-                    <SearchInput />
+                    <SearchInput placeholder="Resimlerde ara..." />
                 </div>
             </header>
 
@@ -140,7 +140,7 @@ export function ImageGrid({
 
             {images.length === 0 && (
                 <div className="text-center py-20 text-muted-foreground">
-                    {query ? `No images found for "${query}"` : "No images found."}
+                    {query ? `"${query}" için resim bulunamadı` : "Resim bulunamadı."}
                 </div>
             )}
 
@@ -153,11 +153,11 @@ export function ImageGrid({
                         disabled={currentPage <= 1}
                         asChild
                     >
-                        <Link href={`/?page=${currentPage - 1}${query ? `&q=${query}` : ''}`}>Previous</Link>
+                        <Link href={`/?page=${currentPage - 1}${query ? `&q=${query}` : ''}`}>Önceki</Link>
                     </Button>
 
                     <span className="text-sm text-muted-foreground">
-                        Page {currentPage} of {totalPages}
+                        Sayfa {currentPage} / {totalPages}
                     </span>
 
                     <Button
@@ -166,7 +166,7 @@ export function ImageGrid({
                         disabled={currentPage >= totalPages}
                         asChild
                     >
-                        <Link href={`/?page=${currentPage + 1}${query ? `&q=${query}` : ''}`}>Next</Link>
+                        <Link href={`/?page=${currentPage + 1}${query ? `&q=${query}` : ''}`}>Sonraki</Link>
                     </Button>
                 </div>
             )}
@@ -181,7 +181,7 @@ export function ImageGrid({
                         className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-foreground text-background px-6 py-3 rounded-full shadow-2xl flex items-center gap-6"
                     >
                         <span className="text-sm font-medium pl-2">
-                            {selectedItems.size} selected
+                            {selectedItems.size} seçildi
                         </span>
 
                         <div className="h-4 w-px bg-background/20" />
@@ -191,10 +191,11 @@ export function ImageGrid({
                                 size="sm"
                                 variant="ghost"
                                 className="hover:bg-background/20 hover:text-background h-8 px-2"
+                                // turbo
                                 onClick={handleBulkCopy}
                             >
                                 <Copy className="w-4 h-4 mr-2" />
-                                Copy Links
+                                Linkleri Kopyala
                             </Button>
 
                             <Button
@@ -205,7 +206,7 @@ export function ImageGrid({
                                 disabled={isDeleting}
                             >
                                 <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
+                                Sil
                             </Button>
                         </div>
 
