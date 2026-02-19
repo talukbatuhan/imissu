@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { AssetWithProduct } from "@/app/actions/assets";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,9 @@ export function AssetDetailModal({
     const [isSavingNotes, setIsSavingNotes] = useState(false);
     const [documents, setDocuments] = useState<{ id: string; fileName: string; fileUrl: string; uploadedAt: Date }[]>([]);
     const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+    const [lastSavedNotes, setLastSavedNotes] = useState(asset.notes || "");
+    const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Update currentAsset when prop changes (for external control) or internal navigation
     useEffect(() => {
@@ -71,8 +74,37 @@ export function AssetDetailModal({
 
     useEffect(() => {
         setNotes(currentAsset.notes || "");
+        setLastSavedNotes(currentAsset.notes || "");
         loadDocuments();
     }, [currentAsset, loadDocuments]);
+
+    // Auto-focus on asset change/open
+    useEffect(() => {
+        if (isOpen) {
+            // Small timeout to allow render/transition
+            const timer = setTimeout(() => {
+                if (textareaRef.current) {
+                    textareaRef.current.focus();
+                    // Move cursor to end
+                    const val = textareaRef.current.value;
+                    textareaRef.current.setSelectionRange(val.length, val.length);
+                }
+            }, 150);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen, currentAsset.id]);
+
+    // Autosave Effect
+    useEffect(() => {
+        // Don't save if notes match last saved or initial load empty mismatch
+        if (notes === lastSavedNotes) return;
+
+        const timer = setTimeout(() => {
+            handleSaveNotes(false);
+        }, 1000); // 1 second debounce
+
+        return () => clearTimeout(timer);
+    }, [notes, lastSavedNotes]);
 
     const currentIndex = allAssets.findIndex(a => a.id === currentAsset.id);
     const hasPrevious = currentIndex > 0;
@@ -122,18 +154,29 @@ export function AssetDetailModal({
         }
     };
 
-    const handleSaveNotes = async () => {
+    const handleSaveNotes = async (isManual = true) => {
+        if (notes === lastSavedNotes && isManual) {
+            toast.info("Değişiklik yok");
+            return;
+        }
+
         setIsSavingNotes(true);
+        setSaveStatus("saving");
         try {
             const result = await updateAssetNote(currentAsset.id, notes);
             if (result.success) {
-                toast.success("Not kaydedildi");
+                if (isManual) toast.success("Not kaydedildi");
+                setLastSavedNotes(notes);
                 setCurrentAsset(prev => ({ ...prev, notes }));
+                setSaveStatus("saved");
+                setTimeout(() => setSaveStatus("idle"), 2000);
             } else {
-                toast.error("Not kaydedilemedi");
+                if (isManual) toast.error("Not kaydedilemedi");
+                setSaveStatus("idle");
             }
         } catch (error) {
-            toast.error("Bir hata oluştu");
+            if (isManual) toast.error("Bir hata oluştu");
+            setSaveStatus("idle");
         } finally {
             setIsSavingNotes(false);
         }
@@ -271,30 +314,36 @@ export function AssetDetailModal({
                         <div className="max-w-3xl mx-auto space-y-2">
                             <div className="flex items-center justify-between text-white/90">
                                 <Label className="text-xs font-medium uppercase tracking-wider text-white/70">Görsel Notları</Label>
-                                {notes !== (currentAsset.notes || "") && (
-                                    <span className="text-[10px] bg-yellow-500/20 text-yellow-200 px-2 py-0.5 rounded-full">Değişiklikler var</span>
-                                )}
+                                <div className="flex items-center gap-2">
+                                    {saveStatus === "saving" && <span className="text-[10px] text-white/70 flex items-center"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Kaydediliyor...</span>}
+                                    {saveStatus === "saved" && <span className="text-[10px] text-green-400 flex items-center"><Check className="w-3 h-3 mr-1" /> Kaydedildi</span>}
+                                    {notes !== lastSavedNotes && saveStatus === "idle" && (
+                                        <span className="text-[10px] bg-yellow-500/20 text-yellow-200 px-2 py-0.5 rounded-full">Değişiklikler var</span>
+                                    )}
+                                </div>
                             </div>
                             <div className="flex gap-2">
                                 <Textarea
+                                    ref={textareaRef}
                                     placeholder="Bu görsele not ekleyin..."
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     className="min-h-[40px] h-12 py-2 resize-none bg-black/40 border-white/20 text-white placeholder:text-white/40 focus:bg-black/60 focus:border-white/40 mb-1"
                                 />
                                 <Button
-                                    onClick={handleSaveNotes}
-                                    disabled={isSavingNotes || notes === (currentAsset.notes || "")}
+                                    onClick={() => handleSaveNotes(true)}
+                                    disabled={isSavingNotes || notes === lastSavedNotes}
                                     size="icon"
                                     className={cn(
                                         "h-12 w-12 shrink-0 transition-all",
-                                        notes === (currentAsset.notes || "")
+                                        notes === lastSavedNotes
                                             ? "bg-white/10 text-white/50 hover:bg-white/20"
                                             : "bg-primary text-primary-foreground hover:bg-primary/90"
                                     )}
+                                    title="Notları Kaydet (Teyit Et)"
                                 >
                                     {isSavingNotes ? <Loader2 className="w-4 h-4 animate-spin" /> :
-                                        notes === (currentAsset.notes || "") ? <Check className="w-4 h-4" /> :
+                                        notes === lastSavedNotes ? <Check className="w-4 h-4" /> :
                                             <ArrowUp className="w-4 h-4" />}
                                 </Button>
                             </div>
