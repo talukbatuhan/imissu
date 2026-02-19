@@ -35,6 +35,7 @@ interface AssetDetailModalProps {
     onClose: () => void;
     onDelete: (id: string, fileName?: string) => Promise<void>;
     onAssign?: (assetId: string, productId: string) => Promise<void>;
+    onNavigate?: (asset: AssetWithProduct) => void;
     products?: { id: string; name: string }[];
 }
 
@@ -45,6 +46,7 @@ export function AssetDetailModal({
     onClose,
     onDelete,
     onAssign,
+    onNavigate,
     products = []
 }: AssetDetailModalProps) {
     const [currentAsset, setCurrentAsset] = useState<AssetWithProduct>(asset);
@@ -59,12 +61,25 @@ export function AssetDetailModal({
     const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // Update currentAsset when prop changes (for external control) or internal navigation
+    // Unified handling for asset prop updates and navigation
     useEffect(() => {
         if (asset && isOpen) {
-            setCurrentAsset(asset);
+            // Note: We compare IDs to distinguish between switching assets and background data refreshes (e.g. from revalidatePath)
+            if (asset.id !== currentAsset.id) {
+                // Switching to a different asset -> Full Update
+                setCurrentAsset(asset);
+                setNotes(asset.notes || "");
+                setLastSavedNotes(asset.notes || "");
+            } else {
+                // Same asset refreshed -> Merged Update
+                // Important: Preserve local 'notes' state to prevent overwriting user input while typing/autosaving
+                setCurrentAsset(prev => ({
+                    ...asset,
+                    notes: prev.notes
+                }));
+            }
         }
-    }, [asset, isOpen]);
+    }, [asset, isOpen]); // removed currentAsset.id from deps to avoid circular logic, relying on asset prop changes
 
     const loadDocuments = useCallback(async () => {
         if (!currentAsset?.id) return;
@@ -72,11 +87,10 @@ export function AssetDetailModal({
         setDocuments(docs as any);
     }, [currentAsset?.id]);
 
+    // Load documents only when the asset ID changes
     useEffect(() => {
-        setNotes(currentAsset.notes || "");
-        setLastSavedNotes(currentAsset.notes || "");
         loadDocuments();
-    }, [currentAsset, loadDocuments]);
+    }, [currentAsset.id, loadDocuments]);
 
     // Auto-focus on asset change/open
     useEffect(() => {
@@ -113,10 +127,18 @@ export function AssetDetailModal({
     const navigate = useCallback((direction: 'prev' | 'next') => {
         const newIndex = direction === 'prev' ? currentIndex - 1 : currentIndex + 1;
         if (newIndex >= 0 && newIndex < allAssets.length) {
-            setCurrentAsset(allAssets[newIndex]);
+            const newAsset = allAssets[newIndex];
+            setCurrentAsset(newAsset);
+            setNotes(newAsset.notes || "");
+            setLastSavedNotes(newAsset.notes || "");
             setSelectedProductId(""); // Reset selection on navigate
+
+            // Notify parent to update the source prop
+            if (onNavigate) {
+                onNavigate(newAsset);
+            }
         }
-    }, [currentIndex, allAssets]);
+    }, [currentIndex, allAssets, onNavigate]);
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (!isOpen) return;
@@ -329,6 +351,12 @@ export function AssetDetailModal({
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     className="min-h-[40px] h-12 py-2 resize-none bg-black/40 border-white/20 text-white placeholder:text-white/40 focus:bg-black/60 focus:border-white/40 mb-1"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSaveNotes(true);
+                                        }
+                                    }}
                                 />
                                 <Button
                                     onClick={() => handleSaveNotes(true)}

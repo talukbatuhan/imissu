@@ -387,6 +387,7 @@ export function AssetGrid({ initialData, currentPage, totalPages, products }: As
                     }}
                     products={products}
                     onAssign={handleSingleAssign}
+                    onNavigate={setPreviewAsset}
                 />
             )}
 

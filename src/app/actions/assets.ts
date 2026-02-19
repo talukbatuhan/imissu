@@ -103,16 +103,14 @@ export async function updateAssetNote(assetId: string, notes: string) {
             .where(eq(assets.id, assetId));
 
         // 3. Backup to Supabase Storage (Text File)
-        // Find asset to get path
+        // DISABLED: Bucket configuration prevents text/plain uploads. 
+        // Database (asset.notes and asset_note_history) is the primary source of truth.
+        /*
         const asset = await db.query.assets.findFirst({
             where: eq(assets.id, assetId)
         });
 
         if (asset && asset.storagePath) {
-            // Create a .txt file path adjacent to the image
-            // e.g. products/123/image.png -> products/123/image.png.txt or just image_notes.txt
-            // Let's use: [original_name].txt
-
             // Extract folder from storagePath
             const pathParts = asset.storagePath.split('/');
             const fileName = pathParts.pop();
@@ -124,7 +122,7 @@ export async function updateAssetNote(assetId: string, notes: string) {
             const { error } = await supabaseAdmin.storage
                 .from("products") // Assuming 'products' bucket
                 .upload(noteFilePath, notes, {
-                    contentType: 'text/plain; charset=utf-8',
+                    contentType: 'text/plain',
                     upsert: true
                 });
 
@@ -133,6 +131,7 @@ export async function updateAssetNote(assetId: string, notes: string) {
                 // Don't fail the whole request, just log it
             }
         }
+        */
 
         revalidatePath("/dashboard/assets");
         return { success: true };
