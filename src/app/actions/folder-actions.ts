@@ -2,16 +2,21 @@
 
 import { db } from "@/lib/db";
 import { products, categories } from "@/lib/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function getFolders() {
-    return await db.select({
-        id: products.id,
-        name: products.name,
-    })
-        .from(products)
-        .orderBy(desc(products.updatedAt));
+    try {
+        return await db.select({
+            id: products.id,
+            name: products.name,
+        })
+            .from(products)
+            .orderBy(desc(products.updatedAt));
+    } catch (error) {
+        console.error("getFolders query failed:", error);
+        return []; // Hata durumunda boş dizi döndür, sayfa çökmesin
+    }
 }
 
 export async function createFolder(name: string) {

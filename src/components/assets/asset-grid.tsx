@@ -39,10 +39,32 @@ interface AssetGridProps {
     products: { id: string; name: string }[];
 }
 
+const SELECTION_STORAGE_KEY = "asset-grid-selected-ids";
+const SELECTION_MODE_STORAGE_KEY = "asset-grid-selection-mode";
+
 export function AssetGrid({ initialData, currentPage, totalPages, products }: AssetGridProps) {
     const [assets, setAssets] = useState<AssetWithProduct[]>(initialData);
-    const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set());
-    const [isSelectionMode, setIsSelectionMode] = useState(false);
+
+    // Seçim state'ini sessionStorage'dan yükle (sayfa değişimlerinde kalıcı)
+    const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(() => {
+        if (typeof window === "undefined") return new Set();
+        try {
+            const stored = sessionStorage.getItem(SELECTION_STORAGE_KEY);
+            return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
+        } catch {
+            return new Set<string>();
+        }
+    });
+
+    const [isSelectionMode, setIsSelectionMode] = useState<boolean>(() => {
+        if (typeof window === "undefined") return false;
+        try {
+            return sessionStorage.getItem(SELECTION_MODE_STORAGE_KEY) === "true";
+        } catch {
+            return false;
+        }
+    });
+
     const [previewAsset, setPreviewAsset] = useState<AssetWithProduct | null>(null);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isBulkAssigning, setIsBulkAssigning] = useState(false);
@@ -52,20 +74,37 @@ export function AssetGrid({ initialData, currentPage, totalPages, products }: As
     const [isCreatingFolder, setIsCreatingFolder] = useState(false);
     const router = useRouter();
 
+    // Sayfa değişince sadece asset listesini güncelle, seçimi SIFIRLAMA
     useEffect(() => {
         setAssets(initialData);
-        setSelectedAssetIds(new Set()); // Reset selection on page change
     }, [initialData]);
 
-    // Cleanup selection when exiting selection mode
+    // selectedAssetIds değişince sessionStorage'a kaydet
     useEffect(() => {
-        if (!isSelectionMode) {
-            setSelectedAssetIds(new Set());
-        }
+        try {
+            sessionStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(Array.from(selectedAssetIds)));
+        } catch { }
+    }, [selectedAssetIds]);
+
+    // isSelectionMode değişince sessionStorage'a kaydet
+    useEffect(() => {
+        try {
+            sessionStorage.setItem(SELECTION_MODE_STORAGE_KEY, String(isSelectionMode));
+        } catch { }
     }, [isSelectionMode]);
 
     const toggleSelectionMode = () => {
-        setIsSelectionMode(!isSelectionMode);
+        if (isSelectionMode) {
+            // Seçim modundan çıkarken her şeyi temizle
+            setIsSelectionMode(false);
+            setSelectedAssetIds(new Set());
+            try {
+                sessionStorage.removeItem(SELECTION_STORAGE_KEY);
+                sessionStorage.removeItem(SELECTION_MODE_STORAGE_KEY);
+            } catch { }
+        } else {
+            setIsSelectionMode(true);
+        }
     };
 
     const handleAssetClick = (asset: AssetWithProduct) => {
@@ -106,6 +145,7 @@ export function AssetGrid({ initialData, currentPage, totalPages, products }: As
                 toast.success(`${ids.length} dosya silindi.`);
                 setSelectedAssetIds(new Set());
                 setIsSelectionMode(false);
+                try { sessionStorage.removeItem(SELECTION_STORAGE_KEY); sessionStorage.removeItem(SELECTION_MODE_STORAGE_KEY); } catch { }
                 router.refresh();
             } else {
                 toast.error("Silme işlemi başarısız.");
@@ -130,6 +170,7 @@ export function AssetGrid({ initialData, currentPage, totalPages, products }: As
                 setSelectedAssetIds(new Set());
                 setIsSelectionMode(false);
                 setShowBulkAssignDialog(false);
+                try { sessionStorage.removeItem(SELECTION_STORAGE_KEY); sessionStorage.removeItem(SELECTION_MODE_STORAGE_KEY); } catch { }
                 router.refresh();
             } else {
                 toast.error("Atama işlemi başarısız.");

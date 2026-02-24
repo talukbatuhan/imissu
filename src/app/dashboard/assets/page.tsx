@@ -52,7 +52,7 @@ export default async function AssetsPage({
             </div>
 
             {result.totalPages > 1 && (
-                <div className="flex items-center justify-center space-x-2 py-4">
+                <div className="flex items-center justify-center space-x-2 px-1 my-10">
                     <Button
                         variant="outline"
                         size="sm"
