@@ -1,7 +1,10 @@
 import { getNewAssets } from "@/app/actions/new-assets";
-import { NewAssetGrid } from "@/components/new-assets/new-asset-grid";
+import { AssetGrid } from "@/components/assets/asset-grid";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { db } from "@/lib/db";
+import { products } from "@/lib/schema";
+import { desc } from "drizzle-orm";
 import Link from "next/link";
 import { SearchInput } from "@/components/search-input";
 
@@ -16,6 +19,11 @@ export default async function NewAssetsPage({
     const searchQuery = query || "";
 
     const result = await getNewAssets(currentPage, pageSize, searchQuery);
+
+    const productList = await db.select({
+        id: products.id,
+        name: products.name
+    }).from(products).orderBy(desc(products.updatedAt));
 
     return (
         <div className="h-full flex-1 flex-col space-y-8 p-8 md:flex">
@@ -33,8 +41,11 @@ export default async function NewAssetsPage({
             <Separator />
 
             <div className="flex-1">
-                <NewAssetGrid
+                <AssetGrid
                     initialData={result.data}
+                    currentPage={currentPage}
+                    totalPages={result.totalPages}
+                    products={productList}
                 />
             </div>
 

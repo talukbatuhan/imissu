@@ -71,6 +71,8 @@ export async function createAssetRecord(data: {
             height: data.height,
         });
 
+        revalidatePath("/dashboard/assets");
+        revalidatePath("/dashboard/new-assets");
         revalidatePath(`/dashboard/products/${data.productId}`);
         return { success: true };
     } catch (error) {
@@ -134,6 +136,7 @@ export async function updateAssetNote(assetId: string, notes: string) {
         */
 
         revalidatePath("/dashboard/assets");
+        revalidatePath("/dashboard/new-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to update asset note:", error);
@@ -148,6 +151,7 @@ export async function deleteAsset(assetId: string) {
             .where(eq(assets.id, assetId));
 
         revalidatePath("/dashboard/assets");
+        revalidatePath("/dashboard/new-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to delete asset:", error);
@@ -164,6 +168,7 @@ export async function bulkDeleteAssets(assetIds: string[]) {
             .where(inArray(assets.id, assetIds));
 
         revalidatePath("/dashboard/assets");
+        revalidatePath("/dashboard/new-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to bulk delete assets:", error);
@@ -180,6 +185,7 @@ export async function bulkAssignAssets(assetIds: string[], productId: string) {
             .where(inArray(assets.id, assetIds));
 
         revalidatePath("/dashboard/assets");
+        revalidatePath("/dashboard/new-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to bulk assign assets:", error);
@@ -209,6 +215,7 @@ export async function restoreAsset(assetIds: string[]) {
 
         revalidatePath("/dashboard/trash");
         revalidatePath("/dashboard/assets");
+        revalidatePath("/dashboard/new-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to restore assets:", error);
@@ -225,12 +232,28 @@ export async function permanentDeleteAsset(assetIds: string[]) {
             where: inArray(assets.id, assetIds),
         });
 
-        const storagePaths = assetsToDelete
-            .filter(a => a.storagePath.startsWith("products/"))
-            .map(a => a.storagePath);
+        const allowedBuckets = new Set(["products", "new_products"]);
+        const deletionsByBucket = new Map<string, string[]>();
 
-        if (storagePaths.length > 0) {
-            await supabaseAdmin.storage.from("products").remove(storagePaths);
+        for (const asset of assetsToDelete) {
+            try {
+                const url = new URL(asset.fileUrl);
+                const match = url.pathname.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+                if (!match) continue;
+                const bucket = match[1];
+                const objectPath = decodeURIComponent(match[2]);
+                if (!allowedBuckets.has(bucket)) continue;
+                const list = deletionsByBucket.get(bucket) ?? [];
+                list.push(objectPath);
+                deletionsByBucket.set(bucket, list);
+            } catch {
+            }
+        }
+
+        for (const [bucket, paths] of deletionsByBucket.entries()) {
+            if (paths.length > 0) {
+                await supabaseAdmin.storage.from(bucket).remove(paths);
+            }
         }
 
         // Also delete associated documents files? (Ideally yes, but let's stick to base logic)
@@ -238,6 +261,8 @@ export async function permanentDeleteAsset(assetIds: string[]) {
         await db.delete(assets).where(inArray(assets.id, assetIds));
 
         revalidatePath("/dashboard/trash");
+        revalidatePath("/dashboard/assets");
+        revalidatePath("/dashboard/new-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to permanently delete assets:", error);
@@ -261,6 +286,7 @@ export async function addAssetDocument(data: {
             fileSize: data.fileSize,
         });
         revalidatePath("/dashboard/assets");
+        revalidatePath("/dashboard/new-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to add document:", error);

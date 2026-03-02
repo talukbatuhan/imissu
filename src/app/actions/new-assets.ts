@@ -1,37 +1,73 @@
 "use server";
 
+import type { AssetWithProduct } from "@/app/actions/assets";
+import { db } from "@/lib/db";
 import { getNewProductImages } from "@/lib/images";
 import { getNewProductImageUrl } from "@/lib/supabase";
+import { assets } from "@/lib/schema";
+import { and, inArray, isNull } from "drizzle-orm";
 
-export interface NewAsset {
-    fileName: string;
-    url: string;
-}
-
-export async function getNewAssets(page = 1, limit = 50, query = "") {
-    // 1. Get ALL images from Storage (cached)
+export async function getNewAssets(page = 1, pageSize = 24, query = "") {
     const allFiles = await getNewProductImages();
 
-    // 2. Filter by query if exists
     let filteredFiles = allFiles;
     if (query) {
-        filteredFiles = allFiles.filter(f => f.toLowerCase().includes(query.toLowerCase()));
+        const q = query.toLowerCase();
+        filteredFiles = allFiles.filter((f) => f.toLowerCase().includes(q));
     }
 
-    // 3. Paginate
     const total = filteredFiles.length;
-    const start = (page - 1) * limit;
-    const end = start + limit;
-    
-    const paginatedFiles = filteredFiles.slice(start, end).map(fileName => ({
-        fileName,
-        url: getNewProductImageUrl(fileName)
-    }));
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const pageFiles = filteredFiles.slice(start, end);
+
+    if (pageFiles.length === 0) {
+        return {
+            data: [] as AssetWithProduct[],
+            totalCount: total,
+            page,
+            totalPages: Math.ceil(total / pageSize),
+        };
+    }
+
+    const existing = await db
+        .select({ storagePath: assets.storagePath })
+        .from(assets)
+        .where(inArray(assets.storagePath, pageFiles));
+
+    const existingPaths = new Set(existing.map((r) => r.storagePath));
+    const missingPaths = pageFiles.filter((p) => !existingPaths.has(p));
+
+    if (missingPaths.length > 0) {
+        await db.insert(assets).values(
+            missingPaths.map((storagePath) => ({
+                productId: null,
+                fileName: storagePath,
+                fileType: storagePath.match(/\.(pdf)$/i) ? "document" : "image",
+                fileUrl: getNewProductImageUrl(storagePath),
+                storagePath,
+                width: null,
+                height: null,
+                notes: null,
+                deletedAt: null,
+            }))
+        );
+    }
+
+    const pageAssets = await db.query.assets.findMany({
+        where: and(isNull(assets.deletedAt), inArray(assets.storagePath, pageFiles)),
+        with: {
+            product: true,
+        },
+    });
+
+    const byPath = new Map(pageAssets.map((a) => [a.storagePath, a as AssetWithProduct]));
+    const data = pageFiles.map((p) => byPath.get(p)).filter(Boolean) as AssetWithProduct[];
 
     return {
-        data: paginatedFiles,
+        data,
         totalCount: total,
         page,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / pageSize),
     };
 }

@@ -41,6 +41,7 @@ export async function assignAssetToProduct(assetId: string, productId: string) {
             .where(eq(assets.id, assetId));
 
         revalidatePath("/dashboard/assets");
+        revalidatePath("/dashboard/new-assets");
         revalidatePath(`/dashboard/products/${productId}`);
         return { success: true };
     } catch (error) {

@@ -20,7 +20,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { GalleryVerticalEnd, Folder, ChevronRight, Trash2 } from "lucide-react";
+import { GalleryVerticalEnd, Folder, ChevronRight, Trash2, Images, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { getFolders } from "@/app/actions/folder-actions";
 
@@ -53,6 +53,7 @@ export async function AppSidebar({ ...props }: React.ComponentProps<typeof Sideb
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild>
                                     <Link href="/dashboard/assets">
+                                        <Images />
                                         <span>Medya Kütüphanesi</span>
                                     </Link>
                                 </SidebarMenuButton>
@@ -61,6 +62,7 @@ export async function AppSidebar({ ...props }: React.ComponentProps<typeof Sideb
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild>
                                     <Link href="/dashboard/new-assets">
+                                        <Sparkles />
                                         <span>Medya Kütüphanesi Yeni</span>
                                     </Link>
                                 </SidebarMenuButton>
