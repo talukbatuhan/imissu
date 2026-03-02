@@ -18,3 +18,8 @@ export function getImageUrl(path: string) {
     const { data } = supabase.storage.from("images").getPublicUrl(path);
     return data.publicUrl;
 }
+
+export function getNewProductImageUrl(path: string) {
+    const { data } = supabase.storage.from("new_products").getPublicUrl(path);
+    return data.publicUrl;
+}

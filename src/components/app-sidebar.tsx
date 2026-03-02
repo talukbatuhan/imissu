@@ -58,6 +58,14 @@ export async function AppSidebar({ ...props }: React.ComponentProps<typeof Sideb
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
 
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild>
+                                    <Link href="/dashboard/new-assets">
+                                        <span>Medya Kütüphanesi Yeni</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+
                             <Collapsible defaultOpen className="group/collapsible">
                                 <SidebarMenuItem>
                                     <CollapsibleTrigger asChild>
