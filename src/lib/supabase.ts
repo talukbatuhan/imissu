@@ -23,3 +23,8 @@ export function getNewProductImageUrl(path: string) {
     const { data } = supabase.storage.from("new_products").getPublicUrl(path);
     return data.publicUrl;
 }
+
+export function getNewProduct2ImageUrl(path: string) {
+    const { data } = supabase.storage.from("new_products_2").getPublicUrl(path);
+    return data.publicUrl;
+}

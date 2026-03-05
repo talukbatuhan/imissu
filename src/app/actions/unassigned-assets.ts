@@ -42,6 +42,7 @@ export async function assignAssetToProduct(assetId: string, productId: string) {
 
         revalidatePath("/dashboard/assets");
         revalidatePath("/dashboard/new-assets");
+        revalidatePath("/dashboard/kaucuk-assets");
         revalidatePath(`/dashboard/products/${productId}`);
         return { success: true };
     } catch (error) {

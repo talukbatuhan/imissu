@@ -96,3 +96,49 @@ export const getNewProductImages = unstable_cache(
     ["new-products-images-list"],
     { revalidate: 60, tags: ["new_products"] } // 1 minute cache, with tag for manual revalidation
 );
+
+export const getNewProduct2Images = unstable_cache(
+    async () => {
+        let allFiles: string[] = [];
+        let page = 0;
+        const limit = 100;
+        let hasMore = true;
+
+        while (hasMore) {
+            const { data, error } = await supabaseAdmin.storage
+                .from("new_products_2")
+                .list("", {
+                    limit,
+                    offset: page * limit,
+                    sortBy: { column: "name", order: "asc" },
+                });
+
+            if (error) {
+                console.error("Error fetching new_products_2 images:", error);
+                throw error;
+            }
+
+            if (!data || data.length === 0) {
+                hasMore = false;
+                break;
+            }
+
+            const imageFiles = data
+                .filter((file) => /\.(jpg|jpeg|png|webp|gif)$/i.test(file.name))
+                .map((file) => file.name);
+
+            allFiles = [...allFiles, ...imageFiles];
+
+            if (data.length < limit) {
+                hasMore = false;
+            }
+            page++;
+        }
+
+        return allFiles.sort((a, b) =>
+            a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+        );
+    },
+    ["new-products-2-images-list"],
+    { revalidate: 60, tags: ["new_products_2"] }
+);

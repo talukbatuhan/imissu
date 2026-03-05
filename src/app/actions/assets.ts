@@ -73,6 +73,7 @@ export async function createAssetRecord(data: {
 
         revalidatePath("/dashboard/assets");
         revalidatePath("/dashboard/new-assets");
+        revalidatePath("/dashboard/kaucuk-assets");
         revalidatePath(`/dashboard/products/${data.productId}`);
         return { success: true };
     } catch (error) {
@@ -137,6 +138,7 @@ export async function updateAssetNote(assetId: string, notes: string) {
 
         revalidatePath("/dashboard/assets");
         revalidatePath("/dashboard/new-assets");
+        revalidatePath("/dashboard/kaucuk-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to update asset note:", error);
@@ -152,6 +154,7 @@ export async function deleteAsset(assetId: string) {
 
         revalidatePath("/dashboard/assets");
         revalidatePath("/dashboard/new-assets");
+        revalidatePath("/dashboard/kaucuk-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to delete asset:", error);
@@ -169,6 +172,7 @@ export async function bulkDeleteAssets(assetIds: string[]) {
 
         revalidatePath("/dashboard/assets");
         revalidatePath("/dashboard/new-assets");
+        revalidatePath("/dashboard/kaucuk-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to bulk delete assets:", error);
@@ -186,6 +190,7 @@ export async function bulkAssignAssets(assetIds: string[], productId: string) {
 
         revalidatePath("/dashboard/assets");
         revalidatePath("/dashboard/new-assets");
+        revalidatePath("/dashboard/kaucuk-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to bulk assign assets:", error);
@@ -216,6 +221,7 @@ export async function restoreAsset(assetIds: string[]) {
         revalidatePath("/dashboard/trash");
         revalidatePath("/dashboard/assets");
         revalidatePath("/dashboard/new-assets");
+        revalidatePath("/dashboard/kaucuk-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to restore assets:", error);
@@ -232,7 +238,7 @@ export async function permanentDeleteAsset(assetIds: string[]) {
             where: inArray(assets.id, assetIds),
         });
 
-        const allowedBuckets = new Set(["products", "new_products"]);
+        const allowedBuckets = new Set(["products", "new_products", "new_products_2"]);
         const deletionsByBucket = new Map<string, string[]>();
 
         for (const asset of assetsToDelete) {
@@ -263,6 +269,7 @@ export async function permanentDeleteAsset(assetIds: string[]) {
         revalidatePath("/dashboard/trash");
         revalidatePath("/dashboard/assets");
         revalidatePath("/dashboard/new-assets");
+        revalidatePath("/dashboard/kaucuk-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to permanently delete assets:", error);
@@ -287,6 +294,7 @@ export async function addAssetDocument(data: {
         });
         revalidatePath("/dashboard/assets");
         revalidatePath("/dashboard/new-assets");
+        revalidatePath("/dashboard/kaucuk-assets");
         return { success: true };
     } catch (error) {
         console.error("Failed to add document:", error);
