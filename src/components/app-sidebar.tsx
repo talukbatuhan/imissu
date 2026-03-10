@@ -20,7 +20,7 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { GalleryVerticalEnd, Folder, ChevronRight, Trash2, Images, Sparkles, Shield } from "lucide-react";
+import { GalleryVerticalEnd, Folder, ChevronRight, Trash2, Images, Sparkles, Shield, FileCheck2, FileText, NotebookPen } from "lucide-react";
 import Link from "next/link";
 import { getFolders } from "@/app/actions/folder-actions";
 
@@ -52,30 +52,129 @@ export async function AppSidebar({ ...props }: React.ComponentProps<typeof Sideb
                         <SidebarMenu>
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild>
-                                    <Link href="/dashboard/assets">
-                                        <Images />
-                                        <span>Medya Kütüphanesi</span>
+                                    <Link href="/dashboard/notes">
+                                        <NotebookPen />
+                                        <span>Not Yazılanlar</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
 
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
-                                    <Link href="/dashboard/new-assets">
-                                        <Sparkles />
-                                        <span>Medya Kütüphanesi Yeni</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
+                            <Collapsible defaultOpen className="group/collapsible">
+                                <SidebarMenuItem>
+                                    <CollapsibleTrigger asChild>
+                                        <SidebarMenuButton>
+                                            <Images />
+                                            <span>Medya Kütüphanesi</span>
+                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                        </SidebarMenuButton>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                        <SidebarMenuSub>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild>
+                                                    <Link href="/dashboard/assets">
+                                                        <span>Tümü</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild>
+                                                    <Link href="/dashboard/assets/no-notes">
+                                                        <FileCheck2 className="size-4" />
+                                                        <span>Not Yazılmayanlar</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild>
+                                                    <Link href="/dashboard/assets/with-notes">
+                                                        <FileText className="size-4" />
+                                                        <span>Not Yazılanlar</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                        </SidebarMenuSub>
+                                    </CollapsibleContent>
+                                </SidebarMenuItem>
+                            </Collapsible>
 
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild>
-                                    <Link href="/dashboard/kaucuk-assets">
-                                        <Shield />
-                                        <span>Medya Kütüphanesi Kauçuk</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
+                            <Collapsible defaultOpen className="group/collapsible">
+                                <SidebarMenuItem>
+                                    <CollapsibleTrigger asChild>
+                                        <SidebarMenuButton>
+                                            <Sparkles />
+                                            <span>Medya Kütüphanesi Yeni</span>
+                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                        </SidebarMenuButton>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                        <SidebarMenuSub>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild>
+                                                    <Link href="/dashboard/new-assets">
+                                                        <span>Tümü</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild>
+                                                    <Link href="/dashboard/new-assets/no-notes">
+                                                        <FileCheck2 className="size-4" />
+                                                        <span>Not Yazılmayanlar</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild>
+                                                    <Link href="/dashboard/new-assets/with-notes">
+                                                        <FileText className="size-4" />
+                                                        <span>Not Yazılanlar</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                        </SidebarMenuSub>
+                                    </CollapsibleContent>
+                                </SidebarMenuItem>
+                            </Collapsible>
+
+                            <Collapsible defaultOpen className="group/collapsible">
+                                <SidebarMenuItem>
+                                    <CollapsibleTrigger asChild>
+                                        <SidebarMenuButton>
+                                            <Shield />
+                                            <span>Medya Kütüphanesi Kauçuk</span>
+                                            <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                        </SidebarMenuButton>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                        <SidebarMenuSub>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild>
+                                                    <Link href="/dashboard/kaucuk-assets">
+                                                        <span>Tümü</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild>
+                                                    <Link href="/dashboard/kaucuk-assets/no-notes">
+                                                        <FileCheck2 className="size-4" />
+                                                        <span>Not Yazılmayanlar</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild>
+                                                    <Link href="/dashboard/kaucuk-assets/with-notes">
+                                                        <FileText className="size-4" />
+                                                        <span>Not Yazılanlar</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                        </SidebarMenuSub>
+                                    </CollapsibleContent>
+                                </SidebarMenuItem>
+                            </Collapsible>
 
                             <Collapsible defaultOpen className="group/collapsible">
                                 <SidebarMenuItem>

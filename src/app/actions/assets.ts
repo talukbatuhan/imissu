@@ -139,6 +139,7 @@ export async function updateAssetNote(assetId: string, notes: string) {
         revalidatePath("/dashboard/assets");
         revalidatePath("/dashboard/new-assets");
         revalidatePath("/dashboard/kaucuk-assets");
+        revalidatePath("/dashboard/notes");
         return { success: true };
     } catch (error) {
         console.error("Failed to update asset note:", error);
